@@ -1,2 +1,3 @@
 node_modules/
 public/*.geojson
+.DS_Store
