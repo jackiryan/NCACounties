@@ -26,25 +26,36 @@ const availableColormaps = [
 ];
 
 const featureNames = new Map();
-featureNames.set('tavg_gwl2', 'Temperature average');
-featureNames.set('pr_above_nonzero_99th_gwl2', 'Precip Days 99 pctl');
-featureNames.set('prmax1day_gwl2', 'Precip 1-day max');
-featureNames.set('prmax5yr_gwl2', 'Precip 5-year max');
-featureNames.set('tmax1day_gwl2', 'Temp max 1-day');
-featureNames.set('tmax_days_ge_100f_gwl2', 'Temp Days 100°F');
-featureNames.set('tmax_days_ge_105f_gwl2', 'Temp Days 105°F');
-featureNames.set('tmax_days_ge_95f_gwl2', 'Temp Days 95°F');
-featureNames.set('tmean_jja_gwl2', 'Temp mean summer');
-featureNames.set('tmin_days_ge_70f_gwl2', 'Temp Days Min 70°F');
-featureNames.set('tmin_days_le_0f_gwl2', 'Temp Days Min 0°F');
-featureNames.set('tmin_days_le_32f_gwl2', 'Temp Days Min 32°F');
-featureNames.set('tmin_jja_gwl2', 'Temp min summer');
-featureNames.set('pr_annual_gwl2', 'Precip Annual');
-featureNames.set('pr_days_above_nonzero_99th_gwl2', 'Precip Days 99 pctl');
+featureNames.set('tavg', 'Temperature average');
+featureNames.set('pr_above_nonzero_99th', 'Precip Days 99 pctl');
+featureNames.set('prmax1day', 'Precip 1-day max');
+featureNames.set('prmax5yr', 'Precip 5-year max');
+featureNames.set('tmax1day', 'Temp max 1-day');
+featureNames.set('tmax_days_ge_100f', 'Temp Days 100°F');
+featureNames.set('tmax_days_ge_105f', 'Temp Days 105°F');
+featureNames.set('tmax_days_ge_95f', 'Temp Days 95°F');
+featureNames.set('tmean_jja', 'Temp mean summer');
+featureNames.set('tmin_days_ge_70f', 'Temp Days Min 70°F');
+featureNames.set('tmin_days_le_0f', 'Temp Days Min 0°F');
+featureNames.set('tmin_days_le_32f', 'Temp Days Min 32°F');
+featureNames.set('tmin_jja', 'Temp min summer');
+featureNames.set('pr_annual', 'Precip Annual');
+featureNames.set('pr_days_above_nonzero_99th', 'Precip Days 99 pctl');
 
 const featureOptions: Record<string, string> = {};
 featureNames.forEach((value, key) => {
   featureOptions[value] = key;
+});
+
+const GWLs = new Map();
+GWLs.set('1.0', '1.5°C (2025)');
+GWLs.set('2.0', '2°C (2036-2045)');
+GWLs.set('3.0', '3°C (2050-2060)');
+GWLs.set('4.0', '4°C (2090-2110)');
+
+const gwlOptions: Record<string, string> = {};
+GWLs.forEach((value, key) => {
+  gwlOptions[value] = key;
 });
 
 function getColorArray(colormapName: string) {
@@ -56,35 +67,24 @@ function getColorArray(colormapName: string) {
   });
 }
 
-let currentFeature = 'tmax_days_ge_100f_gwl2';
+let currentFeature = 'tmax_days_ge_100f';
+let gwl = '2.0';
 let currentColormap = 'viridis';
 let cmapColors = getColorArray(currentColormap);
 let rangeMax = 20;
 let rangeMin = 0;
 
-
-
 // A simple function to map values to a color. 
-// Replace this with something more nuanced if you prefer.
 function valueToColor(value: number | undefined): string {
   if (value === undefined) {
     return '#CCCCCC'; // Gray for unknown
   }
-  // Example: Just map the value range you expect onto a gradient
-  // Let's assume the values range roughly from 0 to 200
   const max = rangeMax;
   const min = rangeMin;
   const ratio = Math.max(0, Math.min((value - min) / (max - min), 1));
 
   const colorIndex = Math.floor(ratio * (cmapColors.length - 1));
-  console.log(colorIndex);
   return cmapColors[colorIndex];
-  /*
-  const r = Math.floor(255 * ratio);
-  const g = 0;
-  const b = Math.floor(255 * (1 - ratio));
-  return `rgb(${r},${g},${b})`;
-  */
 }
 
 // Style function: given a county feature, return the style
@@ -104,7 +104,7 @@ const styleFunction = (feature: Feature): Style => {
 const countiesLayer = new VectorTileLayer({
   source: new VectorTileSource({
     format: new MVT(),
-    url: 'http://localhost:3000/nca_atlas_gwl_2c/{z}/{x}/{y}'
+    url: `http://localhost:3000/counties_gwl/{z}/{x}/{y}?gwl=${gwl}`
   }),
   style: styleFunction
 });
@@ -154,15 +154,20 @@ gui.add(layerParams, 'rangeMin', -50, 50).onChange(() => {
   countiesLayer.setStyle(styleFunction); // Reapply the style
 });
 
-const params = { currentFeature };
+const params = { currentFeature, gwl };
 layerFolder.add(params, 'currentFeature', featureOptions)
   .name('Feature: ')
   .onChange((value: string) => {
-    console.log(`Feature changed to: ${value}`);
     currentFeature = value;
     countiesLayer.getSource().refresh();
   });
-
+layerFolder.add(params, 'gwl', gwlOptions)
+  .name('Warming Level: ')
+  .onChange((value: string) => {
+    gwl = value;
+    const source = countiesLayer.getSource();
+    source.setUrl(`http://localhost:3000/counties_gwl/{z}/{x}/{y}?gwl=${gwl}`);
+  });
 
 
 const info = document.getElementById('info')!;
@@ -180,7 +185,7 @@ map.on('pointermove', (evt) => {
 
   if (feature) {
     // If there's a feature, show the tooltip
-    const name = feature.get('name') || feature.get('state_name');
+    const name = feature.get('name') || feature.get('state_abbr');
     const val = feature.get(currentFeature);
     //const info_str = `${name}<br />Add. days &ge; 100&#176;F: ${(Math.round(val * 100) / 100).toFixed(2)}`;
     const info_str = `${name}<br />${featureNames.get(currentFeature)}: ${(Math.round(val * 100) / 100).toFixed(2)}`;
