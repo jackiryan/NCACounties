@@ -8,9 +8,9 @@ import VectorTileSource from 'ol/source/VectorTile';
 import MVT from 'ol/format/MVT';
 import { OSM } from 'ol/source';
 import Style from 'ol/style/Style';
+import { FeatureLike } from 'ol/Feature';
 import Fill from 'ol/style/Fill';
 import Stroke from 'ol/style/Stroke';
-import { Feature } from 'ol';
 import colormap from 'colormap';
 
 const availableColormaps = [
@@ -88,7 +88,7 @@ function valueToColor(value: number | undefined): string {
 }
 
 // Style function: given a county feature, return the style
-const styleFunction = (feature: Feature): Style => {
+const styleFunction = (feature: FeatureLike): Style => {
   const val = feature.get(currentFeature);
   return new Style({
     fill: new Fill({
@@ -104,7 +104,7 @@ const styleFunction = (feature: Feature): Style => {
 const countiesLayer = new VectorTileLayer({
   source: new VectorTileSource({
     format: new MVT(),
-    url: `http://localhost:3000/counties_gwl/{z}/{x}/{y}?gwl=${gwl}`
+    url: `https://jackiepi.xyz/tiles/counties_gwl/{z}/{x}/{y}?gwl=${gwl}`
   }),
   style: styleFunction
 });
@@ -137,7 +137,7 @@ layerFolder.add(layerParams, 'visible').onChange((value: boolean) => {
   countiesLayer.setVisible(value);
 });
 
-layerFolder.add(layerParams, 'colormap', availableColormaps).onChange((newColormap) => {
+layerFolder.add(layerParams, 'colormap', availableColormaps).onChange((newColormap: string) => {
   currentColormap = newColormap;
   cmapColors = getColorArray(currentColormap);
   // Re-apply style to the vector layer
@@ -159,14 +159,19 @@ layerFolder.add(params, 'currentFeature', featureOptions)
   .name('Feature: ')
   .onChange((value: string) => {
     currentFeature = value;
-    countiesLayer.getSource().refresh();
+    const source = countiesLayer.getSource();
+    if (source) {
+      source.refresh();
+    }
   });
 layerFolder.add(params, 'gwl', gwlOptions)
   .name('Warming Level: ')
   .onChange((value: string) => {
     gwl = value;
     const source = countiesLayer.getSource();
-    source.setUrl(`http://localhost:3000/counties_gwl/{z}/{x}/{y}?gwl=${gwl}`);
+    if (source) {
+      source.setUrl(`https://jackiepi.xyz/tiles/counties_gwl/{z}/{x}/{y}?gwl=${gwl}`);
+    }
   });
 
 
