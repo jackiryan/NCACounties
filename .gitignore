@@ -2,3 +2,7 @@ node_modules/
 public/*.geojson
 dist/
 .DS_Store
+.env
+.env.local
+.env.*.local
+.vscode/

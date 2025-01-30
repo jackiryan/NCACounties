@@ -2,16 +2,20 @@ import 'ol/ol.css';
 import { GUI } from 'lil-gui';
 import OLMap from 'ol/Map';
 import View from 'ol/View';
-import { Tile as TileLayer } from 'ol/layer';
 import VectorTileLayer from 'ol/layer/VectorTile';
 import VectorTileSource from 'ol/source/VectorTile';
 import MVT from 'ol/format/MVT';
-import { OSM } from 'ol/source';
+import Text from 'ol/style/Text';
 import Style from 'ol/style/Style';
 import { FeatureLike } from 'ol/Feature';
 import Fill from 'ol/style/Fill';
 import Stroke from 'ol/style/Stroke';
 import colormap from 'colormap';
+
+const key = import.meta.env.VITE_MAPTILER_API_KEY;
+if (!key) {
+  throw new Error('MapTiler API key is not configured');
+}
 
 const availableColormaps = [
   'jet', 'hsv', 'hot', 'cool', 'spring', 'summer', 'autumn', 'winter', 'bone',
@@ -109,17 +113,173 @@ const countiesLayer = new VectorTileLayer({
 
 
 // Create base layer
-const baseLayer = new TileLayer({
-  source: new OSM()
+const baseStyleFunction = (feature: FeatureLike): Style | undefined => {
+  const layer = feature.get('layer');
+
+  if (layer === 'water') {
+    return new Style({
+      fill: new Fill({
+        color: '#b3d1ff'
+      }),
+      stroke: new Stroke({
+        color: '#b3d1ff',
+        width: 1
+      })
+    });
+  }
+
+  if (layer === 'landcover') {
+    const class_ = feature.get('class');
+    let color: string = '#f2f2f2';
+
+    if (class_ === 'grass' || class_ === 'park') {
+      color = '#c8e6c9';
+    } else if (class_ === 'wood' || class_ === 'forest') {
+      color = '#a5d6a7';
+    }
+
+    return new Style({
+      fill: new Fill({
+        color: color
+      })
+    });
+  }
+
+  if (layer === 'landuse') {
+    return new Style({
+      fill: new Fill({
+        color: '#f2f2f2'
+      })
+    });
+  }
+
+  if (layer === 'place' || layer === 'poi') {
+    return undefined;
+  }
+
+  return new Style({
+    fill: new Fill({
+      color: '#f2f2f2'
+    })
+  });
+};
+
+const baseLayer = new VectorTileLayer({
+  source: new VectorTileSource({
+    format: new MVT(),
+    url: `https://api.maptiler.com/tiles/v3-lite/{z}/{x}/{y}.pbf?key=${key}`,
+    maxZoom: 18,
+  }),
+  style: baseStyleFunction
+});
+
+const labelStyleFunction = (feature: FeatureLike): Style | undefined => {
+  const layer = feature.get('layer');
+
+  // Handle state boundaries
+  if (layer === 'boundary') {
+    if (feature.get('admin_level') === 4) {
+      return new Style({
+        stroke: new Stroke({
+          color: '#333333',
+          width: 1.5,
+          lineDash: undefined
+        })
+      });
+    } else if (feature.get('admin_level') === 2) {
+      return new Style({
+        stroke: new Stroke({
+          color: '#333333',
+          width: 2,
+          lineDash: undefined
+        })
+      });
+    }
+  }
+
+  if (layer === 'place') {
+    const name = feature.get('name');
+    const class_ = feature.get('class');
+
+    // Only show labels at appropriate zoom levels
+    const zoom = map.getView().getZoom();
+    if (!zoom) return undefined;
+
+    // Adjust font size and visibility based on place type and zoom
+    let fontSize = '12px';
+    let minZoom = 0;
+
+    switch (class_) {
+      case 'city':
+        fontSize = '14px';
+        minZoom = 4;
+        break;
+      case 'town':
+        fontSize = '12px';
+        minZoom = 8;
+        break;
+      case 'village':
+        fontSize = '11px';
+        minZoom = 10;
+        break;
+      case 'hamlet':
+        fontSize = '10px';
+        minZoom = 12;
+        break;
+      default:
+        return undefined;
+    }
+
+    if (zoom < minZoom) return undefined;
+
+    return new Style({
+      text: new Text({
+        text: name,
+        font: `${fontSize} 'Open Sans', sans-serif`,
+        fill: new Fill({
+          color: '#000000'
+        }),
+        stroke: new Stroke({
+          color: '#ffffff',
+          width: 3
+        }),
+        textAlign: 'center',
+        textBaseline: 'middle',
+        padding: [3, 3, 3, 3],
+        offsetX: 0,
+        offsetY: 0,
+        placement: 'point',
+        overflow: true,
+        maxAngle: 45,
+        scale: 1.0,
+      })
+    });
+  }
+
+  return undefined;
+
+};
+
+const labelsLayer = new VectorTileLayer({
+  source: new VectorTileSource({
+    format: new MVT(),
+    url: `https://api.maptiler.com/tiles/v3-lite/{z}/{x}/{y}.pbf?key=${key}`,
+    maxZoom: 18,
+  }),
+  style: labelStyleFunction,
+  declutter: true,
+  renderBuffer: 128,
+  updateWhileAnimating: false,
+  updateWhileInteracting: false
 });
 
 // Create the map
 const map = new OLMap({
-  target: 'map', // The ID of the container element in your HTML
-  layers: [baseLayer, countiesLayer],
+  target: 'map',
+  layers: [baseLayer, countiesLayer, labelsLayer],
   view: new View({
-    center: [-10000000, 4500000], // Approx center of the US in Web Mercator
-    zoom: 4
+    center: [-11000000, 4600000], // Approx center of the US in Web Mercator
+    zoom: 5
   })
 });
 
@@ -184,7 +344,13 @@ map.on('pointermove', (evt) => {
   const pixel = map.getEventPixel(evt.originalEvent);
 
   // Check if a feature is at that pixel
-  const feature = map.forEachFeatureAtPixel(pixel, (feat) => feat);
+  const feature = map.forEachFeatureAtPixel(
+    pixel,
+    (feat) => feat,
+    {
+      layerFilter: (layer) => layer === countiesLayer
+    }
+  );
 
   if (feature) {
     // If there's a feature, show the tooltip
