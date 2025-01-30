@@ -75,7 +75,7 @@ let currentColormap = 'viridis';
 let cmapColors = getColorArray(currentColormap);
 let rangeMax = 20;
 let rangeMin = 0;
-let highlightedFeatureId: string | null = null;
+// let highlightedFeatureId: string | null = null;
 
 // A simple function to map values to a color. 
 function valueToColor(value: number | undefined): string {
@@ -93,18 +93,19 @@ function valueToColor(value: number | undefined): string {
 // Style function: given a county feature, return the style
 const styleFunction = (feature: FeatureLike): Style => {
     const val = feature.get(currentFeature);
-    const featureId = feature.get('id')?.toString();
-    const isHighlighted = featureId === highlightedFeatureId;
+    // turning off county highlighting until I get a handle on performance
+    // const featureId = feature.get('id')?.toString();
+    // const isHighlighted = featureId === highlightedFeatureId;
 
     return new Style({
         fill: new Fill({
             color: valueToColor(val)
         }),
         stroke: new Stroke({
-            color: isHighlighted ? '#ffffff' : '#333333',
-            width: isHighlighted ? 2 : 1
+            color: '#333333', //isHighlighted ? '#ffffff' : '#333333',
+            width: 1          //isHighlighted ? 2 : 1
         }),
-        zIndex: isHighlighted ? 2 : 0
+        zIndex: 1             //isHighlighted ? 2 : 0
     });
 };
 
@@ -378,11 +379,13 @@ map.on('pointermove', (evt) => {
     );
 
     if (feature) {
+        /* Removing county highlighting until I get a handle on performance
         const featureId = feature.get('id')?.toString();
         if (featureId !== highlightedFeatureId) {
             highlightedFeatureId = featureId;
             countiesLayer.changed();
         }
+        */
 
         // Show the tooltip
         const name = feature.get('name') || feature.get('state_abbr');
@@ -392,10 +395,12 @@ map.on('pointermove', (evt) => {
 
         map.getViewport().style.cursor = 'pointer';
     } else {
+        /*
         if (highlightedFeatureId !== null) {
             highlightedFeatureId = null;
             countiesLayer.changed();
         }
+        */
 
         // Hide the tooltip
         info.style.display = 'none';
