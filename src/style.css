@@ -109,8 +109,107 @@ button:focus-visible {
   color: #000000;
   padding: 5px;
   border: 1px solid #ccc;
-  border-radius: 3px;
+  border-radius: 4px;
   display: none;
   pointer-events: none;
   font-size: 12px;
+}
+
+#colormap-dropdown {
+  border: 1px solid #ccc;
+  border-radius: 4px 0px;
+  background-color: #f2f2f2;
+  width: 384px;
+  max-height: 500px;
+  overflow-y: auto;
+  z-index: 200;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.colormap-option {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  font-family: sans-serif;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.colormap-option:hover {
+  background-color: #ddd;
+}
+
+.colormap-preview {
+  width: 228px;
+  height: 20px;
+  margin-right: 8px;
+  border: 1px solid black;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+input {
+  background-color: #f2f2f2;
+  color: black;
+  border: 1px solid black;
+  border-radius: 4px;
+}
+
+input[type="number"] {
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Style the number input's spinner buttons */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+#max-input {
+  text-align: right;
+}
+
+.gwl-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: linear-gradient(to right, black, red, yellow, white);
+  border-radius: 3px;
+  outline: none;
+}
+
+/* WebKit (Chrome, Safari, Edge) */
+.gwl-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, black, red, yellow, white);
+  height: 6px;
+  border-radius: 3px;
+}
+
+.gwl-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: rgba(241, 241, 241, 0.8);
+  border: 1px solid black;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-top: -5px;
+}
+
+/* Firefox */
+.gwl-slider::-moz-range-track {
+  background: linear-gradient(to right, black, red, yellow, white);
+  height: 6px;
+  border-radius: 3px;
+}
+
+.gwl-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: rgba(241, 241, 241, 0.8);
+  border: 1px solid black;
+  border-radius: 50%;
+  cursor: pointer;
 }
