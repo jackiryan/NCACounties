@@ -1,6 +1,8 @@
 import 'ol/ol.css';
 import OLMap from 'ol/Map';
 import View from 'ol/View';
+import { Attribution } from 'ol/control';
+import { defaults } from 'ol/control';
 import VectorTileLayer from 'ol/layer/VectorTile';
 import VectorTileSource from 'ol/source/VectorTile';
 import MVT from 'ol/format/MVT';
@@ -15,6 +17,11 @@ const key = import.meta.env.VITE_MAPTILER_API_KEY;
 if (!key) {
     throw new Error('MapTiler API key is not configured');
 }
+
+const attribution = new Attribution({
+    collapsible: false,
+});
+
 
 const availableColormaps = [
     'jet', 'hsv', 'hot', 'cool', 'spring', 'summer', 'autumn', 'winter', 'bone',
@@ -130,25 +137,45 @@ function valueToColor(value: number | undefined): string {
 }
 
 // Style function: given a county feature, return the style
-const styleFunction = (feature: FeatureLike): Style => {
+const styleFunction = (feature: FeatureLike): Style | undefined => {
     const val = feature.get(currentFeature);
 
-    return new Style({
-        fill: new Fill({
-            color: valueToColor(val)
-        }),
-        stroke: new Stroke({
-            color: '#333333',
-            width: 1
-        }),
-        zIndex: 1
-    });
+    const zoom = map.getView().getZoom();
+    if (!zoom) return undefined;
+
+    if (zoom > 6) {
+        return new Style({
+            fill: new Fill({
+                color: valueToColor(val)
+            }),
+            stroke: new Stroke({
+                color: '#333333',
+                width: 1
+            }),
+            zIndex: 1
+        });
+    } else {
+        return new Style({
+            fill: new Fill({
+                color: valueToColor(val)
+            }),
+            stroke: new Stroke({
+                color: valueToColor(val),
+                width: 1
+            }),
+            zIndex: 1
+        });
+    }
+
 };
 
 const countiesLayer = new VectorTileLayer({
     source: new VectorTileSource({
         format: new MVT(),
-        url: `https://jackiepi.xyz/tiles/counties_gwl/{z}/{x}/{y}?gwl=${gwl}`
+        url: `https://jackiepi.xyz/tiles/counties_gwl/{z}/{x}/{y}?gwl=${gwl}`,
+        attributions: [
+            'NCA5 data courtesy of <a href="https://nca2023.globalchange.gov/" target="_blank">U.S. Global Change Research Program</a>,'
+        ]
     }),
     style: styleFunction
 });
@@ -165,7 +192,7 @@ const baseStyleFunction = (feature: FeatureLike): Style | undefined => {
             }),
             stroke: new Stroke({
                 color: '#b3d1ff',
-                width: 0.75
+                width: 1
             })
         });
     }
@@ -218,10 +245,17 @@ const baseLayer = new VectorTileLayer({
 const labelStyleFunction = (feature: FeatureLike): Style | undefined => {
     const layer = feature.get('layer');
 
+    // Only show labels at appropriate zoom levels
+    const zoom = map.getView().getZoom();
+    if (!zoom) return undefined;
+
     if (layer === 'boundary') {
+
+
 
         // Handle state and country boundaries
         if (feature.get('admin_level') === 4) {
+            if (zoom > 7) return undefined;
             return new Style({
                 stroke: new Stroke({
                     color: '#333333',
@@ -230,6 +264,7 @@ const labelStyleFunction = (feature: FeatureLike): Style | undefined => {
                 })
             });
         } else if (feature.get('admin_level') === 2) {
+            if (zoom > 8) return undefined;
             return new Style({
                 stroke: new Stroke({
                     color: '#333333',
@@ -244,9 +279,7 @@ const labelStyleFunction = (feature: FeatureLike): Style | undefined => {
         const name = feature.get('name');
         const class_ = feature.get('class');
 
-        // Only show labels at appropriate zoom levels
-        const zoom = map.getView().getZoom();
-        if (!zoom) return undefined;
+
 
         // Adjust font size and visibility based on place type and zoom
         let fontSize = '12px';
@@ -305,6 +338,10 @@ const labelsLayer = new VectorTileLayer({
         format: new MVT(),
         url: `https://api.maptiler.com/tiles/v3-lite/{z}/{x}/{y}.pbf?key=${key}`,
         maxZoom: 18,
+        attributions: [
+            'Map Data © <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a>',
+            '© <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> contributors'
+        ]
     }),
     style: labelStyleFunction,
     declutter: true,
@@ -317,6 +354,7 @@ const labelsLayer = new VectorTileLayer({
 const map = new OLMap({
     target: 'map',
     layers: [baseLayer, countiesLayer, labelsLayer],
+    controls: defaults({ attribution: false }).extend([attribution]),
     view: new View({
         center: [-11000000, 4600000], // Approx center of the US in Web Mercator
         zoom: 5
