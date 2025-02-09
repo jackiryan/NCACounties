@@ -8,10 +8,16 @@ import VectorTileSource from 'ol/source/VectorTile';
 import MVT from 'ol/format/MVT';
 import Text from 'ol/style/Text';
 import Style from 'ol/style/Style';
-import Feature, { FeatureLike } from 'ol/Feature';
+import { FeatureLike } from 'ol/Feature';
 import Fill from 'ol/style/Fill';
 import Stroke from 'ol/style/Stroke';
 import colormap from 'colormap';
+
+const isDev = false;
+let apiUrl = 'https://jackiepi.xyz/api'
+if (isDev) {
+    apiUrl = 'http://localhost:8000';
+}
 
 const key = import.meta.env.VITE_MAPTILER_API_KEY;
 if (!key) {
@@ -81,25 +87,6 @@ let cmapColors = getColorArray(currentColormap);
 let rangeMax = featureNames.get(currentFeature)?.dftMax ?? 30;
 let rangeMin = featureNames.get(currentFeature)?.dftMin ?? 0;
 
-async function populateClimateData(gwl: string) {
-    fetch(`http://localhost:8000/climate-variables?gwl=${gwl}&var=${currentFeature}`)
-        .then((response) => response.json())
-        .then((data) => {
-            if (data && data.length > 0) {
-                const featureData = featureNames.get(currentFeature)!;
-                for (let i = 0; i < data.length; i++) {
-                    const county = data[i];
-                    featureData.values[county.county_id] = data[i][currentFeature];
-                }
-            }
-        })
-        .catch((error) => {
-            console.error("Error fetching climate data:", error);
-        });
-}
-
-await populateClimateData(gwl);
-
 // A simple function to map values to a color. 
 function valueToColor(value: number | undefined): string {
     if (value === undefined) {
@@ -117,7 +104,7 @@ function valueToColor(value: number | undefined): string {
 const styleFunction = (feature: FeatureLike): Style | undefined => {
     const countyId = feature.get("id");
     const featureData = featureNames.get(currentFeature)!;
-    const val = featureData.values[countyId];
+    const val = featureData.values[countyId] ?? undefined;
 
     const zoom = map.getView().getZoom();
     if (!zoom) return undefined;
@@ -335,6 +322,29 @@ const map = new OLMap({
     })
 });
 
+async function populateClimateData(gwl: string) {
+    fetch(`${apiUrl}/climate-variables?gwl=${gwl}&var=${currentFeature}`)
+        .then((response) => response.json())
+        .then((data) => {
+            if (data && data.length > 0) {
+                const featureData = featureNames.get(currentFeature)!;
+                for (let i = 0; i < data.length; i++) {
+                    const county = data[i];
+                    featureData.values[county.county_id] = data[i][currentFeature];
+                }
+                // refresh the source after populating data
+                countiesLayer.changed();
+            }
+        })
+        .catch((error) => {
+            console.error("Error fetching climate data:", error);
+        });
+}
+
+(async () => {
+    await populateClimateData(gwl);
+})();
+
 function updateLegend() {
     const legendCanvas = document.getElementById('legend-canvas') as HTMLCanvasElement;
     if (legendCanvas) {
@@ -407,7 +417,6 @@ legendDiv.style.color = 'black';
 legendDiv.style.zIndex = '100';
 legendDiv.style.width = `${legendWidth}px`;
 
-
 const gwlContainer = document.createElement('div');
 gwlContainer.style.display = 'flex';
 gwlContainer.style.alignItems = 'center';
@@ -421,7 +430,6 @@ gwlSlider.min = '1';
 gwlSlider.max = '4';
 gwlSlider.step = '1';
 gwlSlider.value = '2';
-
 
 const gwlLabel = document.createElement('span');
 function changeGwlLabel(target: HTMLInputElement) {
@@ -444,17 +452,11 @@ gwlSlider.addEventListener('input', async (event) => {
     changeGwlLabel(target);
     gwl = target.value;
     await populateClimateData(gwl);
-    countiesLayer.setStyle(styleFunction);
-    const source = countiesLayer.getSource();
-    if (source) {
-        source.refresh();
-    }
 });
 
 gwlContainer.appendChild(gwlLabel);
 gwlContainer.appendChild(gwlSlider);
 legendDiv.appendChild(gwlContainer);
-
 
 // Climate variable select, i.e., the data being plotted currently
 const legendTitleSelect = document.createElement('select');
@@ -619,10 +621,6 @@ legendTitleSelect.addEventListener('change', async (event) => {
     cmapColors = getColorArray(currentColormap);
     countiesLayer.setStyle(styleFunction);
     updateLegend();
-    const source = countiesLayer.getSource();
-    if (source) {
-        source.refresh();
-    }
 });
 
 // Add the two inputs to the container
