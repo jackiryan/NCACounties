@@ -229,9 +229,6 @@ const labelStyleFunction = (feature: FeatureLike): Style | undefined => {
     if (!zoom) return undefined;
 
     if (layer === 'boundary') {
-
-
-
         // Handle state and country boundaries
         if (feature.get('admin_level') === 4) {
             if (zoom > 7) return undefined;
@@ -257,8 +254,6 @@ const labelStyleFunction = (feature: FeatureLike): Style | undefined => {
     } else {
         const name = feature.get('name');
         const class_ = feature.get('class');
-
-
 
         // Adjust font size and visibility based on place type and zoom
         let fontSize = '12px';
@@ -355,14 +350,6 @@ function updateLegend() {
                 ctx.fillRect(i, 0, 1, height);
             }
         }
-    }
-    const minLabel = document.getElementById('legend-min');
-    if (minLabel) {
-        minLabel.innerText = rangeMin.toString();
-    }
-    const maxLabel = document.getElementById('legend-max');
-    if (maxLabel) {
-        maxLabel.innerText = rangeMax.toString();
     }
 }
 
@@ -594,7 +581,6 @@ labelsContainer.style.justifyContent = 'space-between';
 //labelsContainer.style.marginTop = '0px';
 legendDiv.appendChild(labelsContainer);
 
-// Instead of spans, create numeric <input> elements (spinboxes)
 const minInput = document.createElement('input');
 minInput.type = 'number';
 minInput.value = rangeMin.toString();
