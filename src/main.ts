@@ -8,7 +8,7 @@ import VectorTileSource from 'ol/source/VectorTile';
 import MVT from 'ol/format/MVT';
 import Text from 'ol/style/Text';
 import Style from 'ol/style/Style';
-import { FeatureLike } from 'ol/Feature';
+import Feature, { FeatureLike } from 'ol/Feature';
 import Fill from 'ol/style/Fill';
 import Stroke from 'ol/style/Stroke';
 import colormap from 'colormap';
@@ -33,67 +33,25 @@ const availableColormaps = [
     'cubehelix'
 ];
 
-const featureNames = new Map();
-featureNames.set('tavg', {
-    name: 'Annual Average Temperature',
-    units: '°F'
-});
-featureNames.set('pr_above_nonzero_99th', {
-    name: 'Amt. of Precip. on Wettest Days',
-    units: '%'
-});
-featureNames.set('prmax1day', {
-    name: 'Precip. on Wettest Day of Year',
-    units: '%'
-});
-featureNames.set('prmax5yr', {
-    name: 'Precip., Wettest Day in 5 Years',
-    units: '%'
-});
-featureNames.set('tmax1day', {
-    name: 'Temp. on Hottest Day of Year',
-    units: '°F'
-});
-featureNames.set('tmax_days_ge_100f', {
-    name: 'Num. Days >100°F',
-    units: ' Days'
-});
-featureNames.set('tmax_days_ge_105f', {
-    name: 'Num. Days >105°F',
-    units: ' Days'
-});
-featureNames.set('tmax_days_ge_95f', {
-    name: 'Num. Days >95°F',
-    units: ' Days'
-});
-featureNames.set('tmean_jja', {
-    name: 'Avg. Summer Temperature',
-    units: '°F'
-});
-featureNames.set('tmin_days_ge_70f', {
-    name: 'Num. Days with Low >70°F',
-    units: ' Days'
-});
-featureNames.set('tmin_days_le_0f', {
-    name: 'Num. Days with Low <0°F',
-    units: ' Days'
-});
-featureNames.set('tmin_days_le_32f', {
-    name: 'Num. Days with Low <32°F',
-    units: ' Days'
-});
-featureNames.set('tmin_jja', {
-    name: 'Average Summer Low',
-    units: '°F'
-});
-featureNames.set('pr_annual', {
-    name: 'Annual Precipitation',
-    units: '%'
-});
-featureNames.set('pr_days_above_nonzero_99th', {
-    name: 'Num. Days w/ Extreme Precip.',
-    units: ' Days'
-});
+// I know this is bad, but it works for now
+const numCounties = 3110;
+const featureNames = new Map([
+    ['tavg', { name: 'Annual Average Temperature', units: '°F', dftCmap: 'hot', dftMin: 0, dftMax: 5, values: new Float32Array(numCounties) }],
+    ['pr_above_nonzero_99th', { name: 'Amt. of Precip. on Wettest Days', units: '%', dftCmap: 'viridis', dftMin: -5, dftMax: 30, values: new Float32Array(numCounties) }],
+    ['prmax1day', { name: 'Precip. on Wettest Day of Year', units: '%', dftCmap: 'viridis', dftMin: -5, dftMax: 15, values: new Float32Array(numCounties) }],
+    ['prmax5yr', { name: 'Precip., Wettest Day in 5 Years', units: '%', dftCmap: 'viridis', dftMin: -5, dftMax: 15, values: new Float32Array(numCounties) }],
+    ['tmax1day', { name: 'Temp. on Hottest Day of Year', units: '°F', dftCmap: 'inferno', dftMin: 0, dftMax: 5, values: new Float32Array(numCounties) }],
+    ['tmax_days_ge_100f', { name: 'Num. Days >100°F', units: ' Days', dftCmap: 'hot', dftMin: 0, dftMax: 30, values: new Float32Array(numCounties) }],
+    ['tmax_days_ge_105f', { name: 'Num. Days >105°F', units: ' Days', dftCmap: 'hot', dftMin: 0, dftMax: 20, values: new Float32Array(numCounties) }],
+    ['tmax_days_ge_95f', { name: 'Num. Days >95°F', units: ' Days', dftCmap: 'hot', dftMin: 0, dftMax: 50, values: new Float32Array(numCounties) }],
+    ['tmean_jja', { name: 'Avg. Summer Temperature', units: '°F', dftCmap: 'inferno', dftMin: 0, dftMax: 6, values: new Float32Array(numCounties) }],
+    ['tmin_days_ge_70f', { name: 'Num. Days with Low >70°F', units: ' Days', dftCmap: 'hot', dftMin: 0, dftMax: 30, values: new Float32Array(numCounties) }],
+    ['tmin_days_le_0f', { name: 'Num. Days with Low <0°F', units: ' Days', dftCmap: 'density', dftMin: -15, dftMax: 0, values: new Float32Array(numCounties) }],
+    ['tmin_days_le_32f', { name: 'Num. Days with Low <32°F', units: ' Days', dftCmap: 'density', dftMin: -35, dftMax: 0, values: new Float32Array(numCounties) }],
+    ['tmin_jja', { name: 'Average Summer Low', units: '°F', dftCmap: 'inferno', dftMin: 0, dftMax: 6, values: new Float32Array(numCounties) }],
+    ['pr_annual', { name: 'Annual Precipitation', units: '%', dftCmap: 'viridis', dftMin: -10, dftMax: 15, values: new Float32Array(numCounties) }],
+    ['pr_days_above_nonzero_99th', { name: 'Num. Days w/ Extreme Precip.', units: ' Days', dftCmap: 'viridis', dftMin: -5, dftMax: 30, values: new Float32Array(numCounties) }],
+]);
 
 const featureOptions: Record<string, string> = {};
 featureNames.forEach((value, key) => {
@@ -118,10 +76,29 @@ function getColorArray(colormapName: string) {
 
 let currentFeature = 'tmax_days_ge_100f';
 let gwl = '2.0';
-let currentColormap = 'viridis';
+let currentColormap = featureNames.get(currentFeature)?.dftCmap ?? 'hot';
 let cmapColors = getColorArray(currentColormap);
-let rangeMax = 20;
-let rangeMin = 0;
+let rangeMax = featureNames.get(currentFeature)?.dftMax ?? 30;
+let rangeMin = featureNames.get(currentFeature)?.dftMin ?? 0;
+
+async function populateClimateData(gwl: string) {
+    fetch(`http://localhost:8000/climate-variables?gwl=${gwl}&var=${currentFeature}`)
+        .then((response) => response.json())
+        .then((data) => {
+            if (data && data.length > 0) {
+                const featureData = featureNames.get(currentFeature)!;
+                for (let i = 0; i < data.length; i++) {
+                    const county = data[i];
+                    featureData.values[county.county_id] = data[i][currentFeature];
+                }
+            }
+        })
+        .catch((error) => {
+            console.error("Error fetching climate data:", error);
+        });
+}
+
+await populateClimateData(gwl);
 
 // A simple function to map values to a color. 
 function valueToColor(value: number | undefined): string {
@@ -138,7 +115,9 @@ function valueToColor(value: number | undefined): string {
 
 // Style function: given a county feature, return the style
 const styleFunction = (feature: FeatureLike): Style | undefined => {
-    const val = feature.get(currentFeature);
+    const countyId = feature.get("id");
+    const featureData = featureNames.get(currentFeature)!;
+    const val = featureData.values[countyId];
 
     const zoom = map.getView().getZoom();
     if (!zoom) return undefined;
@@ -172,7 +151,7 @@ const styleFunction = (feature: FeatureLike): Style | undefined => {
 const countiesLayer = new VectorTileLayer({
     source: new VectorTileSource({
         format: new MVT(),
-        url: `https://jackiepi.xyz/tiles/counties_gwl/{z}/{x}/{y}?gwl=${gwl}`,
+        url: `https://jackiepi.xyz/tiles/counties/{z}/{x}/{y}`,
         attributions: [
             'NCA5 data courtesy of <a href="https://nca2023.globalchange.gov/" target="_blank">U.S. Global Change Research Program</a>,'
         ]
@@ -412,6 +391,8 @@ function populateColormapDropdown() {
         // When the user clicks a colormap option:
         optionDiv.addEventListener('click', () => {
             currentColormap = colormapName;
+            const featureData = featureNames.get(currentFeature)!;
+            featureData.dftCmap = currentColormap;
             cmapColors = colorArray;
             countiesLayer.setStyle(styleFunction);
             updateLegend();
@@ -471,12 +452,15 @@ gwlSlider.style.color = 'red';
 gwlLabel.style.color = 'black';
 gwlLabel.style.whiteSpace = 'nowrap';
 
-gwlSlider.addEventListener('input', (event) => {
+gwlSlider.addEventListener('input', async (event) => {
     const target = event.target as HTMLInputElement;
     changeGwlLabel(target);
+    gwl = target.value;
+    await populateClimateData(gwl);
+    countiesLayer.setStyle(styleFunction);
     const source = countiesLayer.getSource();
     if (source) {
-        source.setUrl(`https://jackiepi.xyz/tiles/counties_gwl/{z}/{x}/{y}?gwl=${target.value}`);
+        source.refresh();
     }
 });
 
@@ -508,16 +492,6 @@ for (const [label, value] of Object.entries(featureOptions)) {
     legendTitleSelect.appendChild(option);
 }
 legendDiv.appendChild(legendTitleSelect);
-
-// When the user changes the selection, update the feature displayed.
-legendTitleSelect.addEventListener('change', (event) => {
-    const select = event.target as HTMLSelectElement;
-    currentFeature = select.value;
-    const source = countiesLayer.getSource();
-    if (source) {
-        source.refresh();
-    }
-});
 
 // Create a canvas element where the gradient will be drawn
 const canvas = document.createElement('canvas');
@@ -645,6 +619,26 @@ maxInput.addEventListener('change', () => {
     updateLegend();
 });
 
+// When the user changes the selection, update the feature displayed.
+legendTitleSelect.addEventListener('change', async (event) => {
+    const select = event.target as HTMLSelectElement;
+    currentFeature = select.value;
+    await populateClimateData(gwl);
+    const featureData = featureNames.get(currentFeature)!;
+    currentColormap = featureData.dftCmap;
+    rangeMin = featureData.dftMin;
+    minInput.value = rangeMin.toString();
+    rangeMax = featureData.dftMax;
+    maxInput.value = rangeMax.toString();
+    cmapColors = getColorArray(currentColormap);
+    countiesLayer.setStyle(styleFunction);
+    updateLegend();
+    const source = countiesLayer.getSource();
+    if (source) {
+        source.refresh();
+    }
+});
+
 // Add the two inputs to the container
 labelsContainer.appendChild(minInput);
 labelsContainer.appendChild(maxInput);
@@ -677,9 +671,9 @@ map.on('pointermove', (evt) => {
     if (feature) {
         // Show the tooltip
         const name = feature.get('name') || feature.get('state_abbr');
-        const val = feature.get(currentFeature);
-        const nameObj = featureNames.get(currentFeature);
-        const info_str = `${name}<br />Change in ${nameObj.name}: ${(Math.round(val * 100) / 100).toFixed(2)}${nameObj.units}`;
+        const county_id = feature.get('id')!;
+        const featureData = featureNames.get(currentFeature)!;
+        const info_str = `${name}<br />Change in ${featureData.name}: ${(Math.round(featureData.values[county_id] * 100) / 100).toFixed(2)}${featureData.units}`;
         updateTooltip(info_str, evt.originalEvent.pageX, evt.originalEvent.pageY);
 
         map.getViewport().style.cursor = 'pointer';
