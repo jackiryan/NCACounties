@@ -81,6 +81,8 @@ function getColorArray(colormapName: string) {
 }
 
 let currentFeature = 'tmax_days_ge_100f';
+let relative = 'True';
+let varTypeStr = 'Change in';
 let gwl = '2.0';
 let currentColormap = featureNames.get(currentFeature)?.dftCmap ?? 'hot';
 let cmapColors = getColorArray(currentColormap);
@@ -102,7 +104,7 @@ function valueToColor(value: number | undefined): string {
 
 // Style function: given a county feature, return the style
 const styleFunction = (feature: FeatureLike): Style | undefined => {
-    const countyId = feature.get("id");
+    const countyId = feature.get('id');
     const featureData = featureNames.get(currentFeature)!;
     const val = featureData.values[countyId] ?? undefined;
 
@@ -323,7 +325,7 @@ const map = new OLMap({
 });
 
 async function populateClimateData(gwl: string) {
-    fetch(`${apiUrl}/climate-variables?gwl=${gwl}&var=${currentFeature}`)
+    fetch(`${apiUrl}/climate-variables?gwl=${gwl}&var=${currentFeature}&relative=${relative}`)
         .then((response) => response.json())
         .then((data) => {
             if (data && data.length > 0) {
@@ -337,7 +339,7 @@ async function populateClimateData(gwl: string) {
             }
         })
         .catch((error) => {
-            console.error("Error fetching climate data:", error);
+            console.error('Error fetching climate data:', error);
         });
 }
 
@@ -442,7 +444,7 @@ changeGwlLabel(gwlSlider);
 // Apply styles for better visibility
 gwlSlider.style.width = '200px';
 gwlSlider.style.flexGrow = '0';
-gwlSlider.className = "gwl-slider";
+gwlSlider.className = 'gwl-slider';
 gwlSlider.style.color = 'red';
 gwlLabel.style.color = 'black';
 gwlLabel.style.whiteSpace = 'nowrap';
@@ -459,15 +461,41 @@ gwlContainer.appendChild(gwlSlider);
 legendDiv.appendChild(gwlContainer);
 
 // Climate variable select, i.e., the data being plotted currently
-const legendTitleSelect = document.createElement('select');
-legendTitleSelect.id = 'legend-var-select';
-legendTitleSelect.style.width = `${legendWidth + 2}px`;
-legendTitleSelect.style.height = `${legendHeight + 4}px`;
-legendTitleSelect.style.backgroundColor = '#f2f2f2';
-legendTitleSelect.style.color = 'black';
-legendTitleSelect.style.border = '1px solid black';
-legendTitleSelect.style.borderRadius = '4px';
-legendTitleSelect.style.textAlign = 'center';
+const varContainer = document.createElement('div');
+varContainer.style.display = 'flex';
+varContainer.style.gap = '10px';
+varContainer.style.alignItems = 'center';
+varContainer.style.marginBottom = '8px';
+varContainer.style.justifyContent = 'space-between';
+
+const varTypeSelect = document.createElement('select');
+varTypeSelect.id = 'var-type-select';
+varTypeSelect.style.width = `25%`;
+varTypeSelect.style.height = `${legendHeight + 4}px`;
+varTypeSelect.style.backgroundColor = '#f2f2f2';
+varTypeSelect.style.color = 'black';
+varTypeSelect.style.border = '1px solid black';
+varTypeSelect.style.borderRadius = '4px';
+varTypeSelect.style.textAlign = 'center';
+const optRelative = document.createElement('option');
+const optAbsolute = document.createElement('option');
+optRelative.text = 'Change in';
+optRelative.value = 'True';
+optAbsolute.text = 'Total';
+optAbsolute.value = 'False';
+optRelative.selected = true;
+varTypeSelect.appendChild(optRelative);
+varTypeSelect.appendChild(optAbsolute);
+
+const variableSelect = document.createElement('select');
+variableSelect.id = 'legend-var-select';
+variableSelect.style.width = `75%`;
+variableSelect.style.height = `${legendHeight + 4}px`;
+variableSelect.style.backgroundColor = '#f2f2f2';
+variableSelect.style.color = 'black';
+variableSelect.style.border = '1px solid black';
+variableSelect.style.borderRadius = '4px';
+variableSelect.style.textAlign = 'center';
 //legendTitleSelect.style.marginBottom = '2px';
 
 // Populate the drop-down with the feature options.
@@ -478,9 +506,11 @@ for (const [label, value] of Object.entries(featureOptions)) {
     if (value === currentFeature) {
         option.selected = true;
     }
-    legendTitleSelect.appendChild(option);
+    variableSelect.appendChild(option);
 }
-legendDiv.appendChild(legendTitleSelect);
+varContainer.appendChild(varTypeSelect);
+varContainer.appendChild(variableSelect);
+legendDiv.appendChild(varContainer);
 
 // Create a canvas element where the gradient will be drawn
 const canvas = document.createElement('canvas');
@@ -607,10 +637,7 @@ maxInput.addEventListener('change', () => {
     updateLegend();
 });
 
-// When the user changes the selection, update the feature displayed.
-legendTitleSelect.addEventListener('change', async (event) => {
-    const select = event.target as HTMLSelectElement;
-    currentFeature = select.value;
+async function onUpdateVariable() {
     await populateClimateData(gwl);
     const featureData = featureNames.get(currentFeature)!;
     currentColormap = featureData.dftCmap;
@@ -621,6 +648,26 @@ legendTitleSelect.addEventListener('change', async (event) => {
     cmapColors = getColorArray(currentColormap);
     countiesLayer.setStyle(styleFunction);
     updateLegend();
+}
+
+// When the user changes the selection, update the feature displayed.
+variableSelect.addEventListener('change', async (event) => {
+    const select = event.target as HTMLSelectElement;
+    currentFeature = select.value;
+    onUpdateVariable();
+});
+
+varTypeSelect.addEventListener('change', async (event) => {
+    const select = event.target as HTMLSelectElement;
+    relative = select.value;
+    varTypeStr = select.options[select.selectedIndex].text;
+    const pr_annual = featureNames.get('pr_annual')!;
+    if (relative === 'True') {
+        pr_annual['units'] = '%';
+    } else {
+        pr_annual['units'] = '"';
+    }
+    onUpdateVariable();
 });
 
 // Add the two inputs to the container
@@ -657,7 +704,7 @@ map.on('pointermove', (evt) => {
         const name = feature.get('name') || feature.get('state_abbr');
         const county_id = feature.get('id')!;
         const featureData = featureNames.get(currentFeature)!;
-        const info_str = `${name}<br />Change in ${featureData.name}: ${(Math.round(featureData.values[county_id] * 100) / 100).toFixed(2)}${featureData.units}`;
+        const info_str = `${name}<br />${varTypeStr} ${featureData.name}: ${(Math.round(featureData.values[county_id] * 100) / 100).toFixed(2)}${featureData.units}`;
         updateTooltip(info_str, evt.originalEvent.pageX, evt.originalEvent.pageY);
 
         map.getViewport().style.cursor = 'pointer';
