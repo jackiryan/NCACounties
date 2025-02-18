@@ -204,7 +204,7 @@ const baseStyleFunction = (feature: FeatureLike): Style | undefined => {
 const baseLayer = new VectorTileLayer({
     source: new VectorTileSource({
         format: new MVT(),
-        url: `https://api.maptiler.com/tiles/v3-lite/{z}/{x}/{y}.pbf?key=${key}`,
+        url: `${apiUrl}/base_tiles/{z}/{x}/{y}.pbf`,
         maxZoom: 18,
     }),
     style: baseStyleFunction
@@ -299,7 +299,7 @@ const labelStyleFunction = (feature: FeatureLike): Style | undefined => {
 const labelsLayer = new VectorTileLayer({
     source: new VectorTileSource({
         format: new MVT(),
-        url: `https://api.maptiler.com/tiles/v3-lite/{z}/{x}/{y}.pbf?key=${key}`,
+        url: `${apiUrl}/base_tiles/{z}/{x}/{y}.pbf`,
         maxZoom: 18,
         attributions: [
             'Map Data © <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a>',
