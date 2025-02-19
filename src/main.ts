@@ -14,7 +14,9 @@ import Stroke from 'ol/style/Stroke';
 import colormap from 'colormap';
 
 const isDev = false;
-let apiUrl = 'https://jackiepi.xyz/api'
+// eventually route this through jackiepi.xyz domain
+const workerUrl = 'https://maptiler-proxy.jpryan104.workers.dev/tiles';
+let apiUrl = 'https://jackiepi.xyz/api';
 if (isDev) {
     apiUrl = 'http://localhost:8000';
 }
@@ -204,7 +206,7 @@ const baseStyleFunction = (feature: FeatureLike): Style | undefined => {
 const baseLayer = new VectorTileLayer({
     source: new VectorTileSource({
         format: new MVT(),
-        url: `${apiUrl}/base_tiles/{z}/{x}/{y}.pbf`,
+        url: `${workerUrl}/{z}/{x}/{y}.pbf`,
         maxZoom: 18,
     }),
     style: baseStyleFunction
@@ -299,7 +301,7 @@ const labelStyleFunction = (feature: FeatureLike): Style | undefined => {
 const labelsLayer = new VectorTileLayer({
     source: new VectorTileSource({
         format: new MVT(),
-        url: `${apiUrl}/base_tiles/{z}/{x}/{y}.pbf`,
+        url: `${workerUrl}/{z}/{x}/{y}.pbf`,
         maxZoom: 18,
         attributions: [
             'Map Data © <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a>',
