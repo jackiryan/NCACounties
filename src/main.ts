@@ -91,7 +91,7 @@ let cmapColors = getColorArray(currentColormap);
 let rangeMax = featureNames.get(currentFeature)?.dftMax ?? 30;
 let rangeMin = featureNames.get(currentFeature)?.dftMin ?? 0;
 
-// A simple function to map values to a color. 
+// A simple function to map values to a color.
 function valueToColor(value: number | undefined): string {
     if (value === undefined) {
         return '#CCCCCC'; // Gray for unknown
@@ -143,6 +143,7 @@ const countiesLayer = new VectorTileLayer({
     source: new VectorTileSource({
         format: new MVT(),
         url: `https://jackiepi.xyz/tiles/counties/{z}/{x}/{y}`,
+        maxZoom: 10,
         attributions: [
             'NCA5 data courtesy of <a href="https://nca2023.globalchange.gov/" target="_blank">U.S. Global Change Research Program</a>,'
         ]
